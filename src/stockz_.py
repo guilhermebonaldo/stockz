@@ -6,7 +6,8 @@ from matplotlib import pyplot as plt
 import os
 from dotenv import load_dotenv, find_dotenv
 import dotenv
-
+from glob import glob
+import squarify
 
 
 class Stockz(object): 
@@ -29,7 +30,7 @@ class Stockz(object):
         self.portfolio_weights = self.make_portfolio_weights(self.portfolio_pivot, self.historical_prices)
         # get stocks daily gains
         self.stocks_gains = self.stocks_daily_gains(self.historical_prices)
-        # weighted portfoli gains
+        # weighted portfolio gains
         self.portfolio_gains = self.portfolio_daily_gains(self.portfolio_weights, self.stocks_gains)
         
         
@@ -45,7 +46,7 @@ class Stockz(object):
         self.data_path = self.path_to_stockz + os.environ.get("data_path")
         
         print(f'Lendo o arquivo {self.data_path}')
-        portfolio_raw = pd.read_excel(self.data_path)
+        portfolio_raw = pd.read_excel(self.data_path).dropna(how = 'any')
 
         # assert if table has the right columns
         for col in ['DATA', 'TIPO', 'ATIVO', 'QTD']:
@@ -127,18 +128,22 @@ class Stockz(object):
         return (weights * gains).sum(axis = 1)
     
     
-    def plot_historical_gains(self):
+    def plot_historical_gains(self, days_lookup):
         sns.set_style("darkgrid")
         
-        self.portfolio_gains.add(1).cumprod().plot(figsize = (15,5))
+        self.portfolio_gains.add(1).cumprod().tail(days_lookup).plot(figsize = (15,5), label = 'Carteira')
         ibov_norm = self.ibov/self.ibov.iloc[0]
-        ibov_norm.plot(figsize = (15,5))
+        ibov_norm.tail(days_lookup).plot(figsize = (15,5), label = 'IBOV' )
+
+        plt.legend(fontsize = 15)
+
         plt.show()
         
         return True
     
-    
-    def plot_daily_gains(self, days_lookup):
+
+    def plot_daily_gains_distribution(self, days_lookup):
+
         sns.set_style("darkgrid")
         plt.figure(figsize = (15,5))
         
@@ -166,3 +171,47 @@ class Stockz(object):
         plt.show()
         
         return True
+
+
+    def plot_FIIs_dividends(self):
+        path_to_dividends = self.path_to_stockz + 'data/external/FIIs/'
+        div_tables = sorted(glob(path_to_dividends+'*'))
+        
+        # read newest version
+        dividends = pd.read_parquet(div_tables[-1].replace('\\', '/'))
+
+        div = dividends[dividends['nomeFII'].isin(self.portfolio_pivot.columns)]
+
+        div = div.pivot('DataPagamento', 'nomeFII', "Rendimento").fillna(0)
+
+        index = pd.DataFrame(index = self.portfolio_pivot.index)
+
+        div = index.join(div).fillna(0)
+
+        div = div*self.portfolio_pivot[[col for col in div.columns]]
+
+        sns.set()
+        #div.index = div.index.strftime('%m-%Y')
+        ax = div.resample('M').sum().tail(13).plot(kind = 'bar', stacked = True, rot=45,figsize = (15,5))
+
+        xtl=[item.get_text()[:7] for item in ax.get_xticklabels()]
+        _=ax.set_xticklabels(xtl)
+
+        plt.title("Dividendos mensais dos FIIs", fontsize = 20)
+        plt.xlabel("Mes", fontsize = 14)
+        plt.ylabel("Valor", fontsize = 14)
+        plt.show()
+
+        return True
+
+    
+    def portfolio_tree_plot(self, days_lookup):
+        #TODO
+        # implementar
+        cum_last_return = self.stocks_gains.tail(days_lookup).add(1).cumprod().tail(1).add(-1).multiply(100)
+
+        weights = self.portfolio_weights.tail(days_lookup).mean()
+
+
+
+        return cum_last_return, weights
