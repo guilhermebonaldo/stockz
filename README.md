@@ -1,5 +1,3 @@
-# TENBU DATA SCIENCE PROJECT GUIDELINES
-
 ## Project Organization
 
     ├── Makefile           <- Makefile with commands like `make data` or `make train`
@@ -48,11 +46,6 @@
 
 ------------------
 
-### Makefile
- Not in use for now
-
-
-------------------
 
 ### Data
 
