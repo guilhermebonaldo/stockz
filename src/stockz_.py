@@ -206,12 +206,32 @@ class Stockz(object):
 
     
     def portfolio_tree_plot(self, days_lookup):
-        #TODO
+        # TODO
         # implementar
-        cum_last_return = self.stocks_gains.tail(days_lookup).add(1).cumprod().tail(1).add(-1).multiply(100)
+        cum_last_return = self.stocks_gains.tail(days_lookup).add(1).cumprod().tail(1).add(-1).multiply(100).iloc[0,:]
 
         weights = self.portfolio_weights.tail(days_lookup).mean()
 
+        df = pd.concat([cum_last_return,weights], axis = 1)
+        df.columns = ['ganhos', 'pesos']
+        df = df[df.pesos > 0].sort_values('ganhos')
+
+        volume = df.pesos.values.tolist()
+        labels = [ f'{x}\n{y}%'  for x,y in zip(df.index.values,df.ganhos.round(1).values.tolist())]
+        color_list = ['#D30000' if x < 0 else '#3BB143' for x in df.ganhos.round(1).values.tolist()]
+
+        plt.figure(figsize = (15,10))
+        plt.rc('font', size=14)
+        squarify.plot(sizes=volume, 
+                    label=labels,
+                    color=color_list,
+                    alpha=0.7,
+                    edgecolor="white", linewidth=3)
+
+        plt.axis('off')
+
+        plt.show()
 
 
-        return cum_last_return, weights
+
+        return True
