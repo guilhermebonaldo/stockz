@@ -24,7 +24,7 @@ class Stockz(object):
         # get ibovespa historical prices from yahoo finance
         self.start_date = self.portfolio_pivot.index.min().strftime('%Y-%m-%d')
         #print('primeira data:', self.start_date)
-        self.ibov = self.get_ibov(self.start_date)
+        self.ibov = self.get_index( '^BVSP', self.start_date)
         
         # make dataframe of historical portfolio weights
         self.portfolio_weights = self.make_portfolio_weights(self.portfolio_pivot, self.historical_prices)
@@ -98,16 +98,15 @@ class Stockz(object):
         return prices
     
     
-    def get_ibov(self, start_date):
-        return web.DataReader('^BVSP', data_source='yahoo', start=start_date)['Close']
+    def get_index(self,tick, start_date):
+        return web.DataReader(tick, data_source='yahoo', start=start_date)['Close']
     
     
     def make_portfolio_weights(self, portfolio, prices):
         
-        self.portfolio_weights = prices*portfolio
-        portfolio_weights = self.portfolio_weights
+        portfolio_weights = prices*portfolio
         
-        portfolio_weights = portfolio_weights.dropna(how = 'all')
+        portfolio_weights = portfolio_weights.dropna(how = 'all').ffill()
         portfolio_weights = portfolio_weights.div(portfolio_weights.sum(axis=1), axis=0)
 
         return portfolio_weights
@@ -115,7 +114,7 @@ class Stockz(object):
     
     def stocks_daily_gains(self, prices):
     
-        self.daily_gains = prices.dropna()
+        self.daily_gains = prices.dropna(how = 'all').ffill()
         
         self.daily_gains_shift = self.daily_gains.shift(1).copy()
         self.daily_gains = (self.daily_gains - self.daily_gains_shift)/self.daily_gains
@@ -206,8 +205,7 @@ class Stockz(object):
 
     
     def portfolio_tree_plot(self, days_lookup):
-        # TODO
-        # implementar
+
         cum_last_return = self.stocks_gains.tail(days_lookup).add(1).cumprod().tail(1).add(-1).multiply(100).iloc[0,:]
 
         weights = self.portfolio_weights.tail(days_lookup).mean()
@@ -232,6 +230,23 @@ class Stockz(object):
 
         plt.show()
 
+        return True
 
+    
+    def descriptive_gains(self):
+        invested = (self.portfolio_pivot*self.historical_prices).iloc[-1,:]
+        invested = invested[invested > 0].round(2)
+
+        invested_sum = invested.sum().round(2)
+        date = invested.name.strftime("%d-%m-%Y")
+
+        desc = pd.DataFrame(invested)
+        desc.columns = ['value']
+        desc['percentage'] = ((desc['value']/invested_sum)*100).round(2)
+
+        print(f'Data: {date}')
+        print(f'Soma total: {invested_sum}\n')
+        print(desc.sort_values('value', ascending = False))
+        
 
         return True
