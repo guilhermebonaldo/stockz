@@ -130,9 +130,14 @@ class Stockz(object):
     def plot_historical_gains(self, days_lookup):
         sns.set_style("darkgrid")
         
-        self.portfolio_gains.add(1).cumprod().tail(days_lookup).plot(figsize = (15,5), label = 'Carteira')
-        ibov_norm = self.ibov/self.ibov.iloc[0]
-        ibov_norm.tail(days_lookup).plot(figsize = (15,5), label = 'IBOV' )
+        # portfolio
+        pg_lookup = self.portfolio_gains.tail(days_lookup).add(1)
+        pg_lookup.cumprod().div(pg_lookup.iloc[0]).plot(figsize = (15,5), label = 'Carteira')
+
+        # ibovespa
+        ibov_norm = self.ibov.tail(days_lookup)
+        ibov_norm = ibov_norm/ibov_norm.iloc[0]
+        ibov_norm.plot(figsize = (15,5), label = 'IBOV' )
 
         plt.legend(fontsize = 15)
 
@@ -193,7 +198,7 @@ class Stockz(object):
         #div.index = div.index.strftime('%m-%Y')
         ax = div.resample('M').sum().tail(13).plot(kind = 'bar', stacked = True, rot=45,figsize = (15,5))
 
-        xtl=[item.get_text()[:7] for item in ax.get_xticklabels()]
+        xtl=[item.get_text()[:10] for item in ax.get_xticklabels()]
         _=ax.set_xticklabels(xtl)
 
         plt.title("Dividendos mensais dos FIIs", fontsize = 20)
@@ -218,7 +223,7 @@ class Stockz(object):
         labels = [ f'{x}\n{y}%'  for x,y in zip(df.index.values,df.ganhos.round(1).values.tolist())]
         color_list = ['#D30000' if x < 0 else '#3BB143' for x in df.ganhos.round(1).values.tolist()]
 
-        plt.figure(figsize = (15,10))
+        plt.figure(figsize = (10,7))
         plt.rc('font', size=14)
         squarify.plot(sizes=volume, 
                     label=labels,
@@ -248,5 +253,14 @@ class Stockz(object):
         print(f'Soma total: {invested_sum}\n')
         print(desc.sort_values('value', ascending = False))
         
+        return True
+
+    def plot_daily_gains(self, days_lookup):
+        ax = self.portfolio_gains.tail(days_lookup).multiply(100).plot(kind = 'bar', figsize = (10,5), rot=45)
+
+        xtl=[item.get_text()[:7] for item in ax.get_xticklabels()]
+        _=ax.set_xticklabels(xtl)
+
+        plt.show()
 
         return True
